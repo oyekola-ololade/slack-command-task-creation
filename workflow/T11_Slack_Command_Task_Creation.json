@@ -1,0 +1,315 @@
+{
+  "name": "T11_Slack_Command_Task_Creation",
+  "nodes": [
+    {
+      "id": "649b012e-f5f9-4df3-9335-9d21ea313367",
+      "name": "Note_5cd4bde2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        50,
+        50
+      ],
+      "parameters": {
+        "content": "Created by Oyekola Ololade\nhttps://www.linkedin.com/in/ololade-oyekola-5b1797397/\nn8n Template Library - Gumroad",
+        "width": 300,
+        "height": 100,
+        "color": 4
+      }
+    },
+    {
+      "id": "488dbef5-fb1a-44dd-b26b-1c18e9db750f",
+      "name": "Slack Command Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "d698e1c6-6c1c-4bbd-85a3-625cd195a095",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "slack-task",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "e4d99d02-1a0f-447b-b2c3-543ae039062c",
+      "name": "Parse Command",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bf886211-254b-4481-9809-909b85e44ecd",
+              "name": "task_name",
+              "value": "={{ $json.body.text.match(/\"(.+?)\"/)[1] }}",
+              "type": "string"
+            },
+            {
+              "id": "0a03aa2f-091e-4bd3-90a7-ceefc4cb1aab",
+              "name": "assignee",
+              "value": "={{ $json.body.text.match(/@(\\w+)/)[1] }}",
+              "type": "string"
+            },
+            {
+              "id": "107bbd9f-846d-4ebe-a944-5468131c597c",
+              "name": "priority",
+              "value": "={{ ($json.body.text.match(/priority:(\\w+)/) || ['','normal'])[1] }}",
+              "type": "string"
+            },
+            {
+              "id": "91da8ab5-c765-4165-83ae-40476534d3f5",
+              "name": "user",
+              "value": "={{ $json.body.user_name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "950f2565-8f00-4b75-b347-4aa05224943a",
+      "name": "Create Notion Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/pages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_NOTION_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "parent",
+              "value": "{\"database_id\": \"YOUR_TASK_DB_ID\"}"
+            },
+            {
+              "name": "properties",
+              "value": "{\"Name\": {\"title\": [{\"text\": {\"content\": \"{{ $json.task_name }}\"}}]}, \"Assignee\": {\"people\": [{\"id\": \"{{ $json.assignee }}\"}]}, \"Priority\": {\"select\": {\"name\": \"{{ $json.priority }}\"}}, \"Status\": {\"status\": {\"name\": \"To Do\"}}, \"Created\": {\"date\": {\"start\": \"{{ $now.toISO() }}\"}}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "61bd92ab-64ca-4b52-a2d8-37795210eb97",
+      "name": "Task Created?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "0e511236-1be6-4753-8887-b9b82af53740",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "dd5775fc-2666-4fa5-9373-8cf239d5d2f0",
+      "name": "Slack Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1050,
+        250
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "YOUR_SLACK_WEBHOOK_URL",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": false,
+        "headerParameters": {
+          "parameters": []
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "=\"Task created and assigned to @\" + $json.assignee + \" (Priority: \" + $json.priority.toUpperCase() + \")\""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2059fd8d-b81b-44d2-b51b-f454f346d411",
+      "name": "Slack Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1050,
+        450
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "YOUR_SLACK_WEBHOOK_URL",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": false,
+        "headerParameters": {
+          "parameters": []
+        },
+        "options": {},
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "Failed to create task. Please check Notion connection."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "375eef84-1aab-4f8b-8c01-dcdd999a0e22",
+      "name": "End",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Slack Command Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Command": {
+      "main": [
+        [
+          {
+            "node": "Create Notion Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Notion Task": {
+      "main": [
+        [
+          {
+            "node": "Task Created?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task Created?": {
+      "main": [
+        [
+          {
+            "node": "Slack Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Confirmation": {
+      "main": [
+        [
+          {
+            "node": "End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Error": {
+      "main": [
+        [
+          {
+            "node": "End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    "Gumroad",
+    "Production",
+    "Template",
+    "Oyekola Ololade"
+  ],
+  "pinData": {},
+  "staticData": null
+}
