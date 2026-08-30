@@ -35,8 +35,16 @@ Turns a Slack slash command into a fully-formed Notion task with assignee and pr
 
 ## Architecture
 
-Open the [visual project page](./index.html#architecture) for the flow derived from the sanitized export.
+The diagram below represents the sanitized template flow. External services, credentials, and environment-specific identifiers must be configured before execution.
 
+```mermaid
+flowchart TD
+    A["Slack command webhook"] --> B["Parse task, assignee, and priority"]
+    B --> C["Create Notion task"]
+    C --> D{"Creation succeeds?"}
+    D -->|Yes| E["Confirm task in Slack"]
+    D -->|No| F["Report failure in Slack"]
+```
 
 ## Workflow
 
